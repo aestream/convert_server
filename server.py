@@ -6,7 +6,11 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
+# Allowed file formats for conversion
 ALLOWED_FORMATS = ['csv', 'aedat4', 'es', 'raw'] #, 'mp4']
+
+# Set maximum file size to 1GB (in bytes)
+app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -46,7 +50,45 @@ HTML_TEMPLATE = """
         .submit-btn:hover {
             background-color: #45a049;
         }
+        .error-message {
+            background-color: #fee;
+            border: 1px solid #fcc;
+            color: #c00;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        /* Add file size information style */
+        .file-info {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
     </style>
+    <script>
+        // Function to check file size before upload
+        function validateFileSize(input) {
+            const file = input.files[0];
+            const maxSize = 1024 * 1024 * 1024; // 1GB in bytes
+            const errorDiv = document.getElementById('errorMessage');
+            const submitBtn = document.querySelector('.submit-btn');
+            
+            if (file && file.size > maxSize) {
+                errorDiv.textContent = 'File size exceeds 1GB limit. Please choose a smaller file.';
+                errorDiv.style.display = 'block';
+                submitBtn.disabled = true;
+                input.value = ''; // Clear the file input
+            } else if (file) {
+                errorDiv.style.display = 'none';
+                submitBtn.disabled = false;
+                // Show file size information
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                document.getElementById('fileInfo').textContent = `Selected file size: ${sizeMB} MB`;
+            }
+        }
+    </script>
     <!-- Matomo -->
     <script>
     var _paq = window._paq = window._paq || [];
@@ -65,11 +107,13 @@ HTML_TEMPLATE = """
 </head>
 <body>
     <div class="upload-form">
-        <h2>Address-event data File Converter</h2>
+        <h2>Address-event data file converter</h2>
         <p>Supported formats: {{ formats|join(', ') }}</p>
+        <div id="errorMessage" class="error-message"></div>
         <form action="/upload" method="post" enctype="multipart/form-data">
             <div class="form-group">
-                <input type="file" name="file" required>
+                <input type="file" name="file" required onchange="validateFileSize(this)">
+                <div id="fileInfo" class="file-info"></div>
             </div>
             <div class="form-group">
                 <select name="output_format" required>
